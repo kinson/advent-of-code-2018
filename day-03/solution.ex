@@ -1,37 +1,43 @@
 defmodule Solution do
 
-  def solve do
-    data()
+  def solve(input_file) do
+    data(input_file)
     |> fill(%{})
     |> count_overlap()
   end
 
-  def bonus do
-    d = data()
-    ids = id_hash(d)
-    d 
+  def bonus(input_file) do
+    data(input_file)
+    |> find_unique_patch() 
+  end
+
+  defp find_unique_patch(coords) do
+    ids = id_hash(coords)
+
+    coords 
     |> fill(%{})
     |> fill_hash(ids)
-    |> Enum.find(fn {k, v} -> v == true end)
+    |> Enum.find(fn {_k, v} -> v == true end)
+    |> elem(0)
   end
 
   defp count_overlap(grid) do
-    Enum.reduce(grid, 0, fn ({key, val}, acc) ->
-      case val > 1 do
+    Enum.reduce(grid, 0, fn ({_key, {c, _ids}}, acc) ->
+      case c > 1 do
         true -> acc + 1 
         false -> acc
       end
     end)
   end
 
-  def id_hash(rows) do
+  defp id_hash(rows) do
     total_count = Enum.count(rows)
     Enum.reduce(1..total_count, %{}, &(Map.put(&2, &1, true)))
   end
 
-  def fill_hash(grid, hash) do
+  defp fill_hash(grid, hash) do
     Enum.reduce(grid, hash,
-      fn ({key, {c, ids}}, acc) ->
+      fn ({_key, {c, ids}}, acc) ->
         case c > 1 do
           true -> Enum.reduce(ids, acc, &Map.put(&2, &1, false))
           false -> acc 
@@ -39,70 +45,80 @@ defmodule Solution do
       end)
   end
 
-  def fill([], m), do: m
+  defp fill([], m), do: m
 
-  def fill([ row | tail], m) do
+  defp fill([ row | tail], m) do
     ## #1 @ 4,4: 4x4
-    start_x = start(row, 0)
-    start_y = start(row, 1)
-    width = size(row, 0)
-    height = size(row, 1)
-    id = id(row)
-    new_grid = Enum.reduce(start_x..(start_x + width - 1), m,
-      fn (x, acc) ->
-        Enum.reduce(start_y..(start_y + height - 1), acc,
-          fn (y, yacc) ->
-            cur = Map.get(yacc, key(x, y))
-            Map.update(
-              yacc,
-              key(x, y),
-              {1, [id]},
-              fn {c, ids} -> {c + 1, [id | ids]} end
-            )
-          end)
-      end)
-    fill(tail, new_grid)
+    patch = row_details(row)
+    fill(
+      tail,
+      Enum.reduce(patch.x..(patch.x + patch.dx - 1), m,
+        fn (x, acc) ->
+          Enum.reduce(patch.y..(patch.y + patch.dy - 1), acc,
+            fn (y, bcc) ->
+              Map.update(
+                bcc,
+                {x, y},
+                {1, [patch.id]},
+                fn {c, ids} -> {c + 1, [patch.id | ids]} end
+              )
+            end)
+        end)
+    )
   end
 
-  defp start(row, col) do
+  defp row_details(row) do
+    %{
+      x: from_row(row, start(0)),
+      y: from_row(row, start(1)),
+      dx: from_row(row, size(0)),
+      dy: from_row(row, size(1)),
+      id: from_row(row, id())
+    }
+  end
+
+  defp from_row(row, func) do
     String.split(row, " ")
-    |> Enum.at(2)
-    |> String.split([",", ":"])
-    |> Enum.at(col)
+    |> func.()
     |> String.to_integer()
+  end 
+
+  defp start(col) do
+    fn(row) ->
+      row
+      |> Enum.at(2)
+      |> String.split([",", ":"])
+      |> Enum.at(col)
+    end
   end
 
-  defp size(row, col) do
-    String.split(row, " ")
-    |> Enum.at(3)
-    |> String.split("x")
-    |> Enum.at(col)
-    |> String.to_integer()
+  defp size(col) do
+    fn(row) ->
+      row
+      |> Enum.at(3)
+      |> String.split("x")
+      |> Enum.at(col)
+    end
   end
 
-  defp id(row) do
-    String.split(row, [" ", "#"])
-    |> Enum.at(1)
-    |> String.to_integer
+  defp id do
+    fn row ->
+      row
+      |> Enum.at(0)
+      |> String.split("#")
+      |> Enum.at(1)
+    end
   end
 
-  defp key(x, y) do
-    "#{form(x)},#{form(y)}"
-  end
-
-  defp form(coord) do
-    Integer.to_string(coord)
-    |> String.pad_leading(4, "0")
-  end
-
-  def data do
-    read_file()
+  def data(input_file) do
+    input_file
+    |> read_file()
     |> String.split("\n")
     |> Enum.filter(&not_empty?/1)
   end
 
-  defp read_file do
-    case File.read("input.txt") do
+  defp read_file(file_name) do
+    case File.read(file_name) do
       {:ok, data} -> data
       {_, _error} -> IO.puts "error reading the file"
     end
