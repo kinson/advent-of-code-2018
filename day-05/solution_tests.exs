@@ -9,6 +9,10 @@ defmodule SolutionTest do
   end
 
   test "reactive pair returns true for J j" do
-    assert Solution.reactive_pair('J', 'j') === true
+    assert Solution.reactive_pair?("J", "j") === true
+  end
+
+  test 'bonus returns removed letter with greatest shortening effect' do
+    assert Solution.bonus("test_input.txt") == {"C", 4}
   end
 end

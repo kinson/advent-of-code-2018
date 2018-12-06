@@ -3,27 +3,32 @@ defmodule Solution do
     data(input_file)
     |> List.first()
     |> String.graphemes()
-    # |> split_polymers()
     |> check_pairs([])
     |> Enum.count()
   end
 
-  def split_polymers([a, b]) do
-    check_pairs([a, b], [])
-  end
+  def bonus(input_file) do
+    polymers = data(input_file)
+               |> List.first()
+               |> String.graphemes()
 
-  def split_polymers([a]) do
-    [a]
-  end
-
-  def split_polymers(polymers) do
-    c = Enum.count(polymers) |> div(2)
-    {first, second} = polymers
-                      |> Enum.split(c)
-    a = split_polymers(first) |> check_pairs([])
-    b = split_polymers(second) |> check_pairs([])
-
-    List.flatten(a, b)
+    polymers
+    |> Enum.map(&String.upcase/1)
+    |> Enum.uniq()
+    |> Enum.reduce(%{}, fn letter, acc ->
+      size = Enum.filter(polymers, fn p ->
+        p != String.upcase(letter) && p != String.downcase(letter)
+      end)
+      |> check_pairs([])
+      |> Enum.count()
+      Map.put(acc, letter, size)
+    end)
+    |> Enum.reduce({0, 100_000}, fn {l, c}, {letter, count} ->
+      case c < count do
+        true -> {l, c}
+        false -> {letter, count}
+      end
+    end)
   end
 
   def check_pairs([], processed), do: Enum.reverse(processed)
